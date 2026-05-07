@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jack's Crackers · Social Content Generator</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: Georgia, serif;
+    background: #FBF6E8;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(circle at 20% 80%, rgba(212,168,83,0.08) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(139,105,20,0.06) 0%, transparent 50%);
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes progress {
+    0% { width: 5%; }
+    40% { width: 60%; }
+    80% { width: 85%; }
+    100% { width: 95%; }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  header {
+    background: #3D2B00;
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .header-logo { font-size: 28px; }
+  .header-title { color: #D4A853; font-size: 18px; font-weight: bold; letter-spacing: 0.5px; }
+  .header-sub { color: #A07830; font-size: 12px; margin-top: 2px; }
+
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* CONFIG */
+  .config-body { max-width: 680px; margin: 0 auto; padding: 32px 24px; }
+  .section { margin-bottom: 28px; }
+  .section-title { font-size: 14px; font-weight: bold; color: #3D2B00; margin-bottom: 4px; }
+  .section-hint { font-size: 11px; color: #8B6914; margin-bottom: 10px; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip {
+    padding: 8px 14px; font-size: 12px; font-family: Georgia, serif;
+    background: #F5EDD6; color: #5C4A00;
+    border: 1px solid #D4A853; border-radius: 20px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .chip.active {
+    background: #3D2B00; color: #D4A853;
+    border-color: #3D2B00; font-weight: bold;
+  }
+  .chip:hover { opacity: 0.85; }
+
+  .text-inputs { display: flex; flex-direction: column; gap: 10px; }
+  .text-inputs label { display: block; font-size: 12px; color: #5C4A00; margin-bottom: 4px; }
+  .text-inputs input {
+    width: 100%; padding: 8px 12px; font-size: 13px;
+    font-family: Georgia, serif; color: #3D2B00;
+    background: #FFFDF5; border: 1px solid #D4A853;
+    border-radius: 6px; outline: none;
+  }
+  .text-inputs input:focus { border-color: #8B6914; }
+
+  .api-key-section {
+    background: #FFF8E6; border: 1px solid #F0D680;
+    border-radius: 8px; padding: 14px 16px; margin-bottom: 20px;
+  }
+  .api-key-section label { font-size: 12px; color: #5C4A00; display: block; margin-bottom: 6px; font-weight: bold; }
+  .api-key-section input {
+    width: 100%; padding: 8px 12px; font-size: 13px;
+    font-family: Georgia, serif; color: #3D2B00;
+    background: #FFFDF5; border: 1px solid #D4A853;
+    border-radius: 6px; outline: none;
+  }
+  .api-key-note { font-size: 11px; color: #8B6914; margin-top: 6px; }
+
+  .generate-btn {
+    width: 100%; padding: 16px; font-size: 16px;
+    font-family: Georgia, serif; font-weight: bold;
+    background: #3D2B00; color: #D4A853;
+    border: none; border-radius: 8px; cursor: pointer;
+    letter-spacing: 0.5px; transition: all 0.2s;
+    box-shadow: 0 4px 16px rgba(61,43,0,0.25);
+  }
+  .generate-btn:hover { background: #5C4200; }
+  .generate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .error-msg {
+    background: #FEE; border: 1px solid #C55;
+    border-radius: 6px; padding: 10px 14px;
+    color: #900; font-size: 13px; margin-bottom: 16px;
+  }
+
+  /* GENERATING */
+  .generating-body {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    min-height: 60vh; padding: 40px;
+    text-align: center;
+  }
+  .gen-emoji { font-size: 48px; margin-bottom: 24px; }
+  .gen-title { font-size: 20px; color: #3D2B00; margin-bottom: 12px; font-weight: bold; }
+  .gen-sub { font-size: 14px; color: #8B6914; margin-bottom: 32px; }
+  .progress-track { width: 200px; height: 4px; background: #E8D5A3; border-radius: 2px; overflow: hidden; }
+  .progress-bar { height: 100%; background: #8B6914; border-radius: 2px; animation: progress 8s ease-in-out forwards; }
+
+  /* RESULTS */
+  .results-header {
+    background: #3D2B00; padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 10px;
+  }
+  .results-title { color: #D4A853; font-size: 15px; font-weight: bold; }
+  .results-sub { color: #A07830; font-size: 11px; margin-top: 2px; }
+  .results-actions { display: flex; gap: 8px; }
+
+  .tip-bar {
+    background: #F5EDD6; border-bottom: 1px solid #E8D5A3;
+    padding: 10px 24px; font-size: 12px; color: #5C4A00;
+  }
+
+  .posts-body { max-width: 720px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+
+  .post-card {
+    background: #FFFDF5; border: 1px solid #E8D5A3;
+    border-radius: 10px; overflow: hidden;
+    box-shadow: 0 2px 8px rgba(139,105,20,0.08);
+    animation: fadeIn 0.3s ease forwards;
+  }
+  .post-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; background: #F5EDD6;
+    border-bottom: 1px solid #E8D5A3; cursor: pointer;
+  }
+  .post-num {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: #8B6914; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: bold; flex-shrink: 0;
+  }
+  .post-meta { margin-left: 10px; }
+  .post-type-label { font-size: 13px; font-weight: bold; color: #3D2B00; }
+  .post-photo-label { font-size: 11px; color: #8B6914; margin-top: 2px; }
+  .post-header-right { display: flex; gap: 8px; align-items: center; }
+
+  .post-body { padding: 16px; }
+  .field-label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .field-label { font-size: 11px; font-weight: bold; color: #8B6914; text-transform: uppercase; letter-spacing: 0.5px; }
+  .caption-box {
+    font-size: 13px; line-height: 1.6; color: #3D2B00;
+    white-space: pre-wrap; background: #FDFAF0;
+    border: 1px solid #E8D5A3; border-radius: 6px;
+    padding: 10px; margin-bottom: 12px;
+  }
+  .hashtag-box {
+    font-size: 12px; color: #1a6b8a;
+    background: #F0F7FA; border: 1px solid #C5DDE8;
+    border-radius: 6px; padding: 8px;
+    margin-bottom: 12px; line-height: 1.7;
+  }
+  .photo-tip {
+    font-size: 12px; color: #5C4A00;
+    background: #FFFBEB; border: 1px solid #F0D680;
+    border-radius: 6px; padding: 8px;
+    margin-bottom: 10px;
+  }
+  .copy-all-row { text-align: right; }
+
+  .btn-sm {
+    padding: 4px 10px; font-size: 11px; font-family: Georgia, serif;
+    border-radius: 4px; cursor: pointer; transition: all 0.2s;
+  }
+  .btn-outline {
+    background: #F5EDD6; color: #8B6914;
+    border: 1px solid #D4A853;
+  }
+  .btn-outline:hover { background: #EDD99A; }
+  .btn-redo {
+    background: transparent; color: #8B6914;
+    border: 1px solid #D4A853;
+  }
+  .btn-primary {
+    padding: 8px 14px; font-size: 12px; font-family: Georgia, serif;
+    background: #D4A853; color: #3D2B00;
+    border: none; border-radius: 6px; cursor: pointer; font-weight: bold;
+  }
+  .btn-ghost {
+    padding: 8px 14px; font-size: 12px; font-family: Georgia, serif;
+    background: transparent; color: #D4A853;
+    border: 1px solid #8B6914; border-radius: 6px; cursor: pointer;
+  }
+  .btn-copied { background: #2D5016 !important; color: #fff !important; border-color: #2D5016 !important; }
+
+  .footer { text-align: center; padding: 24px; color: #A07830; font-size: 12px; }
+
+  /* MARKET MANAGER */
+  .market-manager {
+    background: #F5EDD6; border: 1px solid #D4A853;
+    border-radius: 8px; padding: 14px 16px; margin-bottom: 28px;
+  }
+  .market-manager-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .market-manager-title { font-size: 14px; font-weight: bold; color: #3D2B00; }
+  .market-manager-hint { font-size: 11px; color: #8B6914; margin-bottom: 12px; }
+  .market-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+  .market-row {
+    display: flex; gap: 6px; align-items: center;
+  }
+  .market-row input {
+    flex: 1; padding: 7px 10px; font-size: 12px;
+    font-family: Georgia, serif; color: #3D2B00;
+    background: #FFFDF5; border: 1px solid #D4A853;
+    border-radius: 5px; outline: none;
+  }
+  .market-row input:focus { border-color: #8B6914; }
+  .market-row input.market-name { flex: 1.2; }
+  .market-row input.market-schedule { flex: 1.5; }
+  .market-row input.market-hours { flex: 0.8; }
+  .btn-del-market {
+    background: transparent; border: 1px solid #C5A060;
+    color: #8B6914; border-radius: 4px;
+    width: 26px; height: 26px; cursor: pointer;
+    font-size: 14px; line-height: 1; flex-shrink: 0;
+  }
+  .btn-del-market:hover { background: #FEE; border-color: #C55; color: #900; }
+  .btn-add-market {
+    font-size: 12px; font-family: Georgia, serif;
+    color: #5C4A00; background: transparent;
+    border: 1px dashed #C5A060; border-radius: 5px;
+    padding: 5px 10px; cursor: pointer; width: 100%;
+  }
+  .btn-add-market:hover { background: #EDD99A; }
+  .market-col-labels {
+    display: flex; gap: 6px; margin-bottom: 4px;
+  }
+  .market-col-label {
+    font-size: 10px; color: #8B6914; font-weight: bold;
+    text-transform: uppercase; letter-spacing: 0.4px;
+  }
+
+  .spinner {
+    width: 14px; height: 14px; border: 2px solid #D4A853;
+    border-top-color: #8B6914; border-radius: 50%;
+    animation: spin 0.8s linear infinite; display: inline-block;
+  }
+  .collapse-arrow { color: #8B6914; font-size: 12px; margin-left: 8px; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="header-logo">🧀</div>
+  <div>
+    <div class="header-title">Jack's Crackers</div>
+    <div class="header-sub">Social Content Generator</div>
+  </div>
+</header>
+
+<!-- CONFIG SCREEN -->
+<div id="screen-config" class="screen active">
+  <div class="config-body">
+
+    <!-- API Key -->
+    <div class="api-key-section">
+      <label>Anthropic API Key</label>
+      <input type="password" id="api-key" placeholder="sk-ant-..." />
+      <div class="api-key-note">Your key is never stored — it's only used while this window is open. Get yours at console.anthropic.com.</div>
+    </div>
+
+    <!-- Platform -->
+    <div class="section">
+      <div class="section-title">Platform</div>
+      <div class="chips" id="chips-platform">
+        <div class="chip active" data-val="both">Facebook + Instagram</div>
+        <div class="chip" data-val="facebook">Facebook only</div>
+        <div class="chip" data-val="instagram">Instagram only</div>
+      </div>
+    </div>
+
+    <!-- Batch size -->
+    <div class="section">
+      <div class="section-title">How many posts?</div>
+      <div class="chips" id="chips-batch">
+        <div class="chip" data-val="4">1 Week (4 posts)</div>
+        <div class="chip active" data-val="8">2 Weeks (8 posts)</div>
+        <div class="chip" data-val="16">1 Month (16 posts)</div>
+      </div>
+    </div>
+
+    <!-- Post types -->
+    <div class="section">
+      <div class="section-title">Post types to include</div>
+      <div class="section-hint">Select all that apply — they'll be rotated through your batch</div>
+      <div class="chips" id="chips-types">
+        <div class="chip active" data-val="product_showcase" title="Highlight a specific cracker variety">🧀 Product Showcase</div>
+        <div class="chip active" data-val="behind_scenes" title="Production process, bake day, kitchen life">🏭 Behind the Scenes</div>
+        <div class="chip active" data-val="market_day" title="Announce or recap a farmers market appearance">🛒 Market Day</div>
+        <div class="chip" data-val="wholesale" title="Celebrate a retail or wholesale partner">🤝 Wholesale Partner</div>
+        <div class="chip active" data-val="lifestyle" title="Pairing ideas, entertaining, charcuterie">🍷 Serving Suggestion</div>
+        <div class="chip" data-val="seasonal" title="Holiday, season, or local event tie-in">🍂 Seasonal / Event</div>
+      </div>
+    </div>
+
+    <!-- Photo categories -->
+    <div class="section">
+      <div class="section-title">Photo catalog categories to draw from</div>
+      <div class="chips" id="chips-photos">
+        <div class="chip active" data-val="production" title="Baking, kitchen, process shots">Production (301)</div>
+        <div class="chip active" data-val="lifestyle" title="Serving, entertaining, pairing">Lifestyle (131)</div>
+        <div class="chip active" data-val="product" title="Cracker closeups, packaging">Product (69)</div>
+        <div class="chip active" data-val="market" title="Farmers market, events, booths">Market (36)</div>
+        <div class="chip" data-val="event" title="Special events, pop-ups">Event (25)</div>
+      </div>
+    </div>
+
+    <!-- Market Manager -->
+    <div class="market-manager">
+      <div class="market-manager-header">
+        <div class="market-manager-title">🛒 Farmers Market Schedule</div>
+      </div>
+      <div class="market-manager-hint">Edit anytime — used to write accurate Market Day posts. Markets alternate week-to-week as noted.</div>
+      <div class="market-col-labels">
+        <div class="market-col-label" style="flex:1.2">Market name</div>
+        <div class="market-col-label" style="flex:1.5">Schedule</div>
+        <div class="market-col-label" style="flex:0.8">Hours</div>
+        <div style="width:26px"></div>
+      </div>
+      <div class="market-list" id="market-list"></div>
+      <button class="btn-add-market" onclick="addMarket()">+ Add market</button>
+    </div>
+
+    <!-- Optional context -->
+    <div class="section">
+      <div class="section-title">Optional context</div>
+      <div class="section-hint">Helps personalize the posts — fill in what's relevant right now</div>
+      <div class="text-inputs">
+        <div>
+          <label>Featured flavor or product right now</label>
+          <input type="text" id="focus-flavor" placeholder="e.g. Lavender Rosemary, new packaging, gift boxes" />
+        </div>
+        <div>
+          <label>Upcoming market or event</label>
+          <input type="text" id="upcoming-market" placeholder="e.g. Milford Farmers Market every Saturday 8–1" />
+        </div>
+        <div>
+          <label>Anything else to work in</label>
+          <input type="text" id="special-note" placeholder="e.g. holiday season, new wholesale partner, low inventory warning" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Additional verified facts -->
+    <div class="section">
+      <div class="section-title">Additional verified facts</div>
+      <div class="section-hint">New confirmed facts to add to this batch — reviewed and approved by you. These are treated as locked truth, same as the built-in facts. Clear between batches if no longer relevant.</div>
+      <textarea id="additional-facts"
+        placeholder="e.g. Garlic Herb now uses a new everything seed blend as of May 2026. Graham Crackers are now available in a 3-pack gift set. Retreat Farm Market now carries six flavors."
+        style="width:100%; height:80px; padding:8px 12px; font-size:12px; font-family:Georgia,serif; color:#3D2B00; background:#FFFDF5; border:1px solid #D4A853; border-radius:6px; outline:none; resize:vertical; line-height:1.5;"
+      ></textarea>
+    </div>
+
+    <div id="error-msg" class="error-msg" style="display:none;"></div>
+
+    <button class="generate-btn" id="generate-btn" onclick="startGenerate()">
+      Generate Posts →
+    </button>
+  </div>
+</div>
+
+<!-- GENERATING SCREEN -->
+<div id="screen-generating" class="screen">
+  <div class="generating-body">
+    <div class="gen-emoji">🧀</div>
+    <div class="gen-title">Writing your posts...</div>
+    <div class="gen-sub" id="gen-sub-text">Generating posts in Jack's Crackers voice</div>
+    <div class="progress-track">
+      <div class="progress-bar" id="progress-bar"></div>
+    </div>
+  </div>
+</div>
+
+<!-- RESULTS SCREEN -->
+<div id="screen-results" class="screen">
+  <div class="results-header">
+    <div>
+      <div class="results-title" id="results-title">🧀 Posts Ready</div>
+      <div class="results-sub">Review, copy, and paste into Meta Business Suite</div>
+    </div>
+    <div class="results-actions">
+      <button class="btn-primary" onclick="copyAll()">Copy All</button>
+      <button class="btn-ghost" onclick="downloadPosts()">Download .txt</button>
+      <button class="btn-ghost" onclick="goBack()">← New Batch</button>
+    </div>
+  </div>
+
+  <div class="tip-bar">
+    💡 <strong>Scheduling tip:</strong> Open Meta Business Suite → Create → Schedule Post. Best times: Tue–Sat, 8–10am or 5–7pm.
+  </div>
+
+  <div class="posts-body" id="posts-container"></div>
+
+  <div class="footer">Jack's Crackers Social Generator · Powered by Claude</div>
+</div>
+
+<script>
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let markets = [
+  { name: "Peterborough Farmers Market", schedule: "Every other Wednesday (alternates with Bedford)", hours: "3–6pm", location: "Peterborough, NH" },
+  { name: "Bedford Farmers Market", schedule: "Every other Tuesday (alternates with Peterborough)", hours: "3–6pm", location: "Bedford, NH" },
+];
+
+let state = {
+  platform: "both",
+  batchSize: 8,
+  postTypes: ["product_showcase", "behind_scenes", "market_day", "lifestyle"],
+  photoCategories: ["production", "lifestyle", "product", "market"],
+  focusFlavor: "",
+  upcomingMarket: "",
+  specialNote: "",
+  additionalFacts: "",
+};
+let posts = [];
+
+const BRAND_VOICE = `You are the social media voice for Jack's Crackers — a small-batch cracker company based in Keene, NH. The maker is Kevin. The brand is named after Jack, one of Kevin's cats who really loved his food.
+
+Tagline (use this exactly, never invent variations):
+"Jack's Crackers: Really, Truly Hand Made."
+— Note: no comma after "Truly". Colon after "Jack's Crackers". Period at the end always.
+— Use it as a closing line when it fits naturally. Never invent or paraphrase a tagline.
+
+Approved supporting language (can appear in body of post, not as a closing tagline):
+- "Good crackers, small batches." — factual, understated. Use in body copy only.
+- "32 bags per batch." — lead with this as proof before the tagline when relevant.
+
+---
+VERIFIED FACTS — USE ONLY THESE
+---
+
+ACTIVE FLAVORS (exactly 10 — use only these names, spelled exactly as listed):
+1. Red Wine Crackers — the origin/flagship flavor, started from a cooking contest
+2. White Wine Crackers
+3. Garlic Herb Crackers — everything seed topping
+4. Tomato Basil Crackers — sun-dried tomato, basil, asiago; tomato soaked two weeks in white wine
+5. Lavender Rosemary Crackers
+6. Cracked Pepper & Sage Crackers
+7. Buttermilk Bacon Crackers
+8. Graham Crackers
+9. Chocolate Graham Crackers — dairy-free and soy-free
+10. Spicy Chocolate Mint Crackers — dairy-free and soy-free; made with Little Zoe's Hot Sauce (local Keene, NH)
+
+VAULT FLAVORS (past only — do NOT say these are coming back or available):
+Strawberry, Maple Apple, Fire, Cranberry Cornbread, Coffee
+
+WHOLESALE ACCOUNTS — STRICT RULE:
+Only mention a wholesale account by name if Kevin has specifically entered it in the "Featured flavor or product" or "Anything else to work in" fields for this batch. Do NOT mention any wholesale account name unless it appears in those optional context fields. Never invent a reason to name a location.
+The full approved list (for reference only — do not use unless entered by Kevin):
+- Adirondack Winery (two NY locations)
+- Monadnock Oil & Vinegar
+- Monadnock Food Coop
+- Soles
+- Hannah Grimes Marketplace
+- Jenna's Market
+- Retreat Farm Market
+Also available on: Faire, Mable, jackscrackers.com
+
+PRODUCTION FACTS:
+- 32 bags per batch (use "32 bags per batch" — this is the proof point, lead with it)
+- The bags themselves are made by hand
+- Every bag has a batch number and bag number printed on label (e.g. Batch 118 · Bag 16/34)
+- Shelf life: 9 months, shelf stable, best-by date on every bag
+- No nut or egg allergens across the line
+- Shared kitchen processes wheat, dairy, sesame, and pork
+- The ONLY flavor with a documented soaking process is Tomato Basil (sun-dried tomatoes soaked two weeks in white wine). No other flavor has a soaking step — do NOT invent one.
+- Do NOT name the kitchen location, kitchen type, or describe the physical production space beyond what is listed here.
+- Do NOT name Kevin or any person by name in posts. Use "we" only.
+- Do NOT describe tools, equipment, or production methods unless they are explicitly listed as verified facts above.
+
+ALLERGEN / DIETARY FACTS:
+- ALL 10 flavors contain wheat — NEVER describe any flavor as gluten-free
+- Chocolate Graham and Spicy Chocolate Mint are dairy-free and soy-free (only these two)
+- No other dietary claims
+
+---
+NEVER SAY ANY OF THE FOLLOWING
+---
+- A founding year (not confirmed)
+- A specific team headcount (not confirmed)
+- Any flavor is gluten-free
+- Vault flavors are coming back or available
+- "Most-requested flavor" or "top repeat purchase" as standalone claims
+- "Jack's mom's recipe" for Tomato Basil
+- Any wholesale account name unless Kevin entered it in context fields
+- Health claims: "calming," "stress-relief," "sleep-promoting," "anxiety-reducing"
+- Empty praise: "delicious," "amazing," "incredible" without specific sensory detail
+- Filler: "crafted with love," "made with care," "passion-driven," "artisanal," "elevate," "journey," "game-changer"
+- Dismissive casualness: "what have you," "or whatever"
+- Emojis — none, ever. The brand voice is clean and confident.
+- Exclamation marks — maximum one per post, and only when genuinely earned
+- Any flavor name not on the active list above
+- Any person's name — use "we" only, never "Kevin" or any individual's name
+- Any production detail, process, ingredient, or equipment not explicitly listed in VERIFIED FACTS above — do not invent or extrapolate. If you don't know it as a listed fact, don't write it.
+- Weather, current events, or any real-world context not entered by Kevin in the optional fields
+- The physical location, name, or description of the production kitchen
+
+---
+BRAND VOICE & TONE — SOCIAL
+---
+The Jack's Crackers voice is a quiet, confident good friend. Knowledgeable but never showing off. Warm but not gushing. Dry wit when the moment calls for it.
+
+VOICE RULES:
+- Quietly confident — describe what is actually there (flavor, texture, experience), not superlatives
+- Shows, doesn't tell — use specific sensory detail, not conclusions ("It holds up under a generous smear of goat cheese without going soft" not "pairs great with cheese")
+- Warm and knowledgeable — warm first, expertise is just there when useful
+- Dry wit, sparingly — one well-placed wry observation, not a brand that winks constantly
+- First person plural always: "we," "our," "us" — never third person
+- Address reader as "you" directly
+- Specific over generic — use real flavor names, real production facts, real numbers
+- Conversational — contractions are fine; they sound like a person
+- Local New England pride — Keene NH, farmers markets, local partners
+- Captions should be 3–5 sentences — substantial enough to show voice, not so long they get skipped
+- Close with the tagline when it fits naturally
+
+GRAMMAR:
+- Oxford comma always
+- No ALL CAPS for emphasis
+- Em dash with no spaces—like this
+- Spell out one through nine; numerals for 10+
+- Sentence case for any headings
+
+HASHTAGS:
+Mix of #JacksCrackers, #NHMade, #NewHampshire, #shoplocal, #smallbatch, #crackers, #charcuterie and flavor-specific or occasion-specific tags. 8–12 per post.`;
+
+const POST_TYPE_LABELS = {
+  product_showcase: "Product Showcase",
+  behind_scenes: "Behind the Scenes",
+  market_day: "Market Day",
+  wholesale: "Wholesale Partner",
+  lifestyle: "Serving Suggestion",
+  seasonal: "Seasonal / Event",
+};
+
+const PHOTO_CAT_DESCS = {
+  production: "Baking, kitchen, process shots (301 photos)",
+  lifestyle: "Serving, entertaining, pairing (131 photos)",
+  product: "Cracker closeups, packaging (69 photos)",
+  market: "Farmers market, events, booths (36 photos)",
+  event: "Special events, pop-ups (25 photos)",
+};
+
+// ── MARKET MANAGER ────────────────────────────────────────────────────────────
+function renderMarkets() {
+  const list = document.getElementById("market-list");
+  list.innerHTML = "";
+  markets.forEach((m, i) => {
+    const row = document.createElement("div");
+    row.className = "market-row";
+    row.innerHTML = `
+      <input class="market-name" type="text" placeholder="Market name" value="${esc(m.name)}"
+        oninput="markets[${i}].name = this.value" />
+      <input class="market-schedule" type="text" placeholder="e.g. Every other Wednesday" value="${esc(m.schedule)}"
+        oninput="markets[${i}].schedule = this.value" />
+      <input class="market-hours" type="text" placeholder="e.g. 3–6pm" value="${esc(m.hours)}"
+        oninput="markets[${i}].hours = this.value" />
+      <button class="btn-del-market" onclick="deleteMarket(${i})" title="Remove">×</button>
+    `;
+    list.appendChild(row);
+  });
+}
+
+function addMarket() {
+  markets.push({ name: "", schedule: "", hours: "", location: "" });
+  renderMarkets();
+  // Focus first empty input in new row
+  const rows = document.querySelectorAll(".market-row");
+  const last = rows[rows.length - 1];
+  if (last) last.querySelector("input").focus();
+}
+
+function deleteMarket(i) {
+  markets.splice(i, 1);
+  renderMarkets();
+}
+
+function buildMarketScheduleText() {
+  const active = markets.filter(m => m.name.trim());
+  if (!active.length) return "";
+  return "CURRENT FARMERS MARKET SCHEDULE:\n" + active.map(m =>
+    `- ${m.name}${m.location ? " (" + m.location + ")" : ""}: ${m.schedule}, ${m.hours}`
+  ).join("\n");
+}
+
+// Init market UI
+renderMarkets();
+
+// ── CHIP LOGIC ────────────────────────────────────────────────────────────────
+function initChips(groupId, stateKey, singleSelect) {
+  const container = document.getElementById(groupId);
+  container.querySelectorAll(".chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const val = chip.dataset.val;
+      if (singleSelect) {
+        container.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+        chip.classList.add("active");
+        state[stateKey] = isNaN(val) ? val : parseInt(val);
+      } else {
+        chip.classList.toggle("active");
+        const active = [...container.querySelectorAll(".chip.active")].map(c => c.dataset.val);
+        state[stateKey] = active;
+      }
+    });
+  });
+}
+
+initChips("chips-platform", "platform", true);
+initChips("chips-batch", "batchSize", true);
+initChips("chips-types", "postTypes", false);
+initChips("chips-photos", "photoCategories", false);
+
+// ── SCREEN SWITCHING ──────────────────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById("screen-" + id).classList.add("active");
+}
+
+function goBack() {
+  posts = [];
+  document.getElementById("posts-container").innerHTML = "";
+  showScreen("config");
+}
+
+// ── PROMPT BUILDER ────────────────────────────────────────────────────────────
+function buildPrompt(count, extra = "") {
+  const typeLabels = state.postTypes.map(t => POST_TYPE_LABELS[t] || t).join(", ");
+  const catDescs = state.photoCategories.map(c => PHOTO_CAT_DESCS[c] || c).join("; ");
+  const platformLabel = state.platform === "both" ? "Facebook and Instagram" : state.platform;
+  const marketSchedule = buildMarketScheduleText();
+  return `${BRAND_VOICE}
+${marketSchedule ? "\n" + marketSchedule + "\n" : ""}
+${state.additionalFacts ? "\n---\nADDITIONAL VERIFIED FACTS (treat as locked truth, same as the facts above — do not contradict or ignore):\n" + state.additionalFacts + "\n---\n" : ""}
+
+Generate exactly ${count} social media posts for Jack's Crackers.
+
+Platform: ${platformLabel}
+Post types to rotate through: ${typeLabels}
+Photo categories available: ${catDescs}
+${state.focusFlavor ? "Featured flavor/product right now: " + state.focusFlavor : ""}
+${state.upcomingMarket ? "Upcoming market/event: " + state.upcomingMarket : ""}
+${state.specialNote ? "Special context: " + state.specialNote : ""}
+${extra}
+
+For each post return a JSON array with ${count} objects. Each object must have:
+- "postType": short label (e.g. "Product Showcase")
+- "platform": "Facebook + Instagram", "Facebook", or "Instagram"
+- "photoCategory": which category from the catalog to use
+- "caption": full post caption, 3-5 sentences, in the quiet confident brand voice. No emojis. No exclamation marks unless one is genuinely earned. Specific sensory detail over empty praise. Close with "Jack's Crackers: Really, Truly Hand Made." when it fits naturally — never invent or vary the tagline.
+- "hashtags": 8-12 hashtags as a single string, no emojis in hashtags
+- "photoTip": one specific tip on which kind of photo to pick from that category
+
+Vary tone and angle. Don't repeat opening words. Space out post types so the batch feels varied.
+For Market Day posts: mention one or two specific flavors at most — never list all 10 flavors in sequence.
+Never close a post with both "Good crackers, small batches." and the tagline — use one or the other, not both.
+Return ONLY a valid JSON array. No markdown, no explanation.`;
+}
+
+// ── API CALL ──────────────────────────────────────────────────────────────────
+async function callAPI(prompt) {
+  const apiKey = document.getElementById("api-key").value.trim();
+  if (!apiKey) throw new Error("Please enter your Anthropic API key at the top of the page.");
+
+  // Validate API key contains only safe header characters
+  if (/[^\x20-\x7E]/.test(apiKey)) {
+    throw new Error("API key contains invalid characters. Please re-paste your key.");
+  }
+
+  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true"
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-5",
+      max_tokens: 4000,
+      messages: [{ role: "user", content: prompt }]
+    })
+  });
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error?.message || `API error ${resp.status}`);
+  }
+
+  const data = await resp.json();
+  const text = data.content?.find(b => b.type === "text")?.text || "";
+  const clean = text.replace(/```json|```/g, "").trim();
+  return JSON.parse(clean);
+}
+
+// ── GENERATE ──────────────────────────────────────────────────────────────────
+async function startGenerate() {
+  state.focusFlavor = document.getElementById("focus-flavor").value;
+  state.upcomingMarket = document.getElementById("upcoming-market").value;
+  state.specialNote = document.getElementById("special-note").value;
+  state.additionalFacts = document.getElementById("additional-facts").value.trim();
+
+  const errorEl = document.getElementById("error-msg");
+  errorEl.style.display = "none";
+
+  if (state.postTypes.length === 0 || state.photoCategories.length === 0) {
+    errorEl.textContent = "Please select at least one post type and one photo category.";
+    errorEl.style.display = "block";
+    return;
+  }
+
+  document.getElementById("gen-sub-text").textContent = `Generating ${state.batchSize} posts in Jack's Crackers voice`;
+  showScreen("generating");
+
+  // Reset and restart progress bar animation
+  const bar = document.getElementById("progress-bar");
+  bar.style.animation = "none";
+  bar.offsetHeight; // reflow
+  bar.style.animation = "progress 8s ease-in-out forwards";
+
+  try {
+    const result = await callAPI(buildPrompt(state.batchSize));
+    posts = Array.isArray(result) ? result : [result];
+    renderResults();
+    showScreen("results");
+  } catch (e) {
+    showScreen("config");
+    errorEl.textContent = e.message || "Generation failed. Check your API key and try again.";
+    errorEl.style.display = "block";
+  }
+}
+
+// ── RENDER RESULTS ────────────────────────────────────────────────────────────
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function renderResults() {
+  document.getElementById("results-title").textContent = `🧀 ${posts.length} Posts Ready`;
+  const container = document.getElementById("posts-container");
+  container.innerHTML = "";
+  posts.forEach((post, i) => {
+    container.appendChild(createPostCard(post, i));
+  });
+}
+
+function createPostCard(post, index) {
+  const card = document.createElement("div");
+  card.className = "post-card";
+  card.id = `card-${index}`;
+  card.style.animationDelay = `${index * 60}ms`;
+
+  const day = DAYS[index % 7];
+  card.innerHTML = `
+    <div class="post-header" onclick="toggleCard(${index})">
+      <div style="display:flex;align-items:center;flex:1">
+        <div class="post-num">${index + 1}</div>
+        <div class="post-meta">
+          <div class="post-type-label">${esc(post.postType)} · ${day}</div>
+          <div class="post-photo-label">📷 Use: ${esc(post.photoCategory)} · ${esc(post.platform)}</div>
+        </div>
+      </div>
+      <div class="post-header-right">
+        <button class="btn-sm btn-redo" id="redo-btn-${index}" onclick="event.stopPropagation();redoPost(${index})">↺ Redo</button>
+        <span class="collapse-arrow" id="arrow-${index}">▲</span>
+      </div>
+    </div>
+    <div class="post-body" id="body-${index}">
+      <div class="field-label-row">
+        <span class="field-label">Caption</span>
+        <button class="btn-sm btn-outline" onclick="copyText('${index}-caption')">Copy</button>
+      </div>
+      <div class="caption-box" id="${index}-caption">${esc(post.caption)}</div>
+
+      <div class="field-label-row">
+        <span class="field-label">Hashtags</span>
+        <button class="btn-sm btn-outline" onclick="copyText('${index}-hashtags')">Copy</button>
+      </div>
+      <div class="hashtag-box" id="${index}-hashtags">${esc(post.hashtags)}</div>
+
+      <div class="photo-tip"><strong>📸 Photo tip:</strong> ${esc(post.photoTip)}</div>
+
+      <div class="copy-all-row">
+        <button class="btn-sm btn-outline" onclick="copyBoth(${index})">Copy caption + hashtags</button>
+      </div>
+    </div>
+  `;
+  return card;
+}
+
+function esc(str) {
+  return String(str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function toggleCard(index) {
+  const body = document.getElementById(`body-${index}`);
+  const arrow = document.getElementById(`arrow-${index}`);
+  if (body.style.display === "none") {
+    body.style.display = "block";
+    arrow.textContent = "▲";
+  } else {
+    body.style.display = "none";
+    arrow.textContent = "▼";
+  }
+}
+
+// ── COPY HELPERS ──────────────────────────────────────────────────────────────
+function copyText(elId) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  navigator.clipboard.writeText(el.textContent.trim());
+  flashBtn(event.target);
+}
+
+function copyBoth(index) {
+  const caption = document.getElementById(`${index}-caption`)?.textContent.trim() || "";
+  const hashtags = document.getElementById(`${index}-hashtags`)?.textContent.trim() || "";
+  navigator.clipboard.writeText(`${caption}\n\n${hashtags}`);
+  flashBtn(event.target);
+}
+
+function flashBtn(btn) {
+  const orig = btn.textContent;
+  btn.textContent = "✓ Copied";
+  btn.classList.add("btn-copied");
+  setTimeout(() => {
+    btn.textContent = orig;
+    btn.classList.remove("btn-copied");
+  }, 2000);
+}
+
+function downloadPosts() {
+  const date = new Date().toISOString().slice(0, 10);
+  const content = posts.map((p, i) => [
+    `POST ${i + 1} — ${p.postType} — ${p.platform}`,
+    `Photo category: ${p.photoCategory}`,
+    ``,
+    p.caption,
+    ``,
+    p.hashtags,
+    ``,
+    `Photo tip: ${p.photoTip}`,
+    ``,
+    `─────────────────────────────────────────`,
+    ``
+  ].join("\n")).join("\n");
+
+  const header = [
+    `Jack's Crackers — Social Post Batch`,
+    `Generated: ${date}`,
+    `Posts: ${posts.length}`,
+    ``,
+    `═════════════════════════════════════════`,
+    ``,
+    ``
+  ].join("\n");
+
+  const blob = new Blob([header + content], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `jacks-crackers-posts-${date}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function copyAll() {
+  const all = posts.map((p, i) =>
+    `--- POST ${i + 1} (${p.postType}) ---\nPhoto category: ${p.photoCategory}\n\n${p.caption}\n\n${p.hashtags}\n\nPhoto tip: ${p.photoTip}`
+  ).join("\n\n");
+  navigator.clipboard.writeText(all);
+  flashBtn(document.querySelector(".results-actions .btn-primary"));
+}
+
+// ── REDO SINGLE POST ──────────────────────────────────────────────────────────
+async function redoPost(index) {
+  const btn = document.getElementById(`redo-btn-${index}`);
+  btn.innerHTML = '<span class="spinner"></span>';
+  btn.disabled = true;
+
+  try {
+    const result = await callAPI(buildPrompt(1, `This replaces post #${index + 1}. Generate just 1 post.`));
+    const newPost = Array.isArray(result) ? result[0] : result;
+    posts[index] = newPost;
+    const oldCard = document.getElementById(`card-${index}`);
+    const newCard = createPostCard(newPost, index);
+    oldCard.replaceWith(newCard);
+  } catch (e) {
+    btn.innerHTML = "↺ Redo";
+    btn.disabled = false;
+    alert("Redo failed: " + e.message);
+  }
+}
+</script>
+</body>
+</html>
